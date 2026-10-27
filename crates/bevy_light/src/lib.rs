@@ -168,6 +168,7 @@ impl Plugin for LightPlugin {
             .init_resource::<DirectionalLightShadowMap>()
             .init_resource::<PointLightShadowMap>()
             .init_asset::<ScatteringMedium>()
+            .register_type::<EarlyLightCulling>()
             .register_required_components::<Camera3d, Clusters>()
             .configure_sets(
                 PostUpdate,
@@ -280,6 +281,12 @@ pub struct NotShadowReceiver;
 #[derive(Debug, Component, Reflect, Default, Clone)]
 #[reflect(Component, Default, Debug)]
 pub struct TransmittedShadowReceiver;
+
+/// Add this component to a [`Camera3d`] to skip lights outside their range or spot cone before shadow sampling.
+/// The output matches the standard path.
+#[derive(Debug, Component, Reflect, Default, Clone, Copy, PartialEq, Eq)]
+#[reflect(Component, Default, Debug, PartialEq, Clone)]
+pub struct EarlyLightCulling;
 
 /// Add this component to a [`Camera3d`]
 /// to control how to anti-alias shadow edges.
