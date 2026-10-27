@@ -1,6 +1,6 @@
 [package]
 name = "bevy_annotations"
-version = "0.20.0-dev"
+version = "0.20.0"
 edition = "2024"
 description = "Well-known reflection annotations for Bevy tools such as inspectors and editors"
 homepage = "https://bevy.org"
@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 keywords = ["bevy"]
 
 [dependencies]
-bevy_reflect = { path = "../bevy_reflect", version = "0.20.0-dev", default-features = false }
+bevy_reflect = { path = "../bevy_reflect", version = "0.20.0", default-features = false }
 
 [lints]
 workspace = true
