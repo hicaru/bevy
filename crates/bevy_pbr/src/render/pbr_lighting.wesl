@@ -792,30 +792,38 @@ fn point_light(
         rangeAttenuation * texture_sample;
 }
 
-fn spot_light(
-    light_id: u32,
-    input: ptr<function, LightingInput>,
-    enable_diffuse: bool
-) -> vec3<f32> {
-    // reuse the point light calculations
-    let point_light = point_light(light_id, input, enable_diffuse, false);
-
+fn spot_attenuation_factor(light_id: u32, light_to_frag: vec3<f32>) -> f32 {
     let light = &view_bindings::clustered_lights.data[light_id];
-
-    // reconstruct spot dir from x/z and y-direction flag
     var spot_dir = vec3<f32>((*light).light_custom_data.x, 0.0, (*light).light_custom_data.y);
     spot_dir.y = sqrt(max(0.0, 1.0 - spot_dir.x * spot_dir.x - spot_dir.z * spot_dir.z));
     if ((*light).flags & POINT_LIGHT_FLAGS_SPOT_LIGHT_Y_NEGATIVE) != 0u {
         spot_dir.y = -spot_dir.y;
     }
-    let light_to_frag = (*light).position_radius.xyz - (*input).P.xyz;
-
-    // calculate attenuation based on filament formula https://google.github.io/filament/Filament.md.html#listing_glslpunctuallight
-    // spot_scale and spot_offset have been precomputed
-    // note we normalize here to get "l" from the filament listing. spot_dir is already normalized
     let cd = dot(-spot_dir, normalize(light_to_frag));
     let attenuation = saturate(cd * (*light).light_custom_data.z + (*light).light_custom_data.w);
-    let spot_attenuation = attenuation * attenuation;
+    return attenuation * attenuation;
+}
+
+fn spot_light(
+    light_id: u32,
+    input: ptr<function, LightingInput>,
+    enable_diffuse: bool
+) -> vec3<f32> {
+    let light_to_frag =
+        view_bindings::clustered_lights.data[light_id].position_radius.xyz - (*input).P.xyz;
+    let spot_attenuation = spot_attenuation_factor(light_id, light_to_frag);
+    return spot_light_with_attenuation(light_id, input, enable_diffuse, spot_attenuation);
+}
+
+fn spot_light_with_attenuation(
+    light_id: u32,
+    input: ptr<function, LightingInput>,
+    enable_diffuse: bool,
+    spot_attenuation: f32
+) -> vec3<f32> {
+    // reuse the point light calculations
+    let point_light = point_light(light_id, input, enable_diffuse, false);
+    let light = &view_bindings::clustered_lights.data[light_id];
 
     var texture_sample = 1f;
 

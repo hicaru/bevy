@@ -58,7 +58,8 @@ use bevy_color::{Color, LinearRgba};
 
 pub use atmosphere::*;
 use bevy_light::{
-    AmbientLight, DirectionalLight, PointLight, RectLight, ShadowFilteringMethod, SpotLight,
+    AmbientLight, DirectionalLight, EarlyLightCulling, PointLight, RectLight,
+    ShadowFilteringMethod, SpotLight,
 };
 use bevy_shader::{load_shader_library, ShaderRef};
 pub use cluster::*;
@@ -235,6 +236,7 @@ impl Plugin for PbrPlugin {
             ))
             .add_plugins((
                 decal::ForwardDecalPlugin,
+                SyncComponentPlugin::<EarlyLightCulling, Self>::default(),
                 SyncComponentPlugin::<DirectionalLight, Self>::default(),
                 SyncComponentPlugin::<PointLight, Self>::default(),
                 SyncComponentPlugin::<SpotLight, Self>::default(),
@@ -514,5 +516,8 @@ impl SyncComponent<RenderApp, PbrPlugin> for AmbientLight {
     type Target = Self;
 }
 impl SyncComponent<RenderApp, PbrPlugin> for ShadowFilteringMethod {
+    type Target = Self;
+}
+impl SyncComponent<RenderApp, PbrPlugin> for EarlyLightCulling {
     type Target = Self;
 }

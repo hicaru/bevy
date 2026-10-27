@@ -781,6 +781,12 @@ pub struct ViewUniformOffset {
     pub offset: u32,
 }
 
+/// Gives this camera a private pair of main textures.
+///
+/// Use this for render graphs that run post-processing for each camera.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct IsolatedMainTexture;
+
 #[derive(Component, Clone)]
 pub struct ViewTarget {
     main_textures: MainTargetTextures,
@@ -1371,9 +1377,11 @@ type MainTextureKey = (
     TextureUsages,
     TextureFormat,
     Msaa,
+    Option<Entity>,
 );
 
 fn main_texture_key(
+    entity: Entity,
     camera: &ExtractedCamera,
     view: &ExtractedView,
     texture_usage: &CameraMainTextureUsages,
@@ -1384,6 +1392,7 @@ fn main_texture_key(
         texture_usage.0,
         view.target_format,
         msaa,
+        camera.isolated_main_texture.then_some(entity),
     )
 }
 
@@ -1443,7 +1452,7 @@ pub fn prepare_view_targets(
                 Some(CompositingSpace::Linear) | None => LinearRgba::from(color).into(),
             });
 
-        let key = main_texture_key(camera, view, texture_usage, *msaa);
+        let key = main_texture_key(entity, camera, view, texture_usage, *msaa);
         let (a, b, sampled, main_texture) = textures.entry(key.clone()).or_insert_with(|| {
             let descriptor = TextureDescriptor {
                 label: None,

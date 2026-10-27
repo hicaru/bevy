@@ -465,6 +465,19 @@ fn apply_pbr_lighting(
             i = i + 1u) {
         let light_id = clustering::get_clusterable_object_id(i);
 
+@if(EARLY_LIGHT_CULLING) {
+        let light_to_frag =
+            view_bindings::clustered_lights.data[light_id].position_radius.xyz - in.world_position.xyz;
+        let distance_square = dot(light_to_frag, light_to_frag);
+        let range_falloff = lighting::getRangeFalloff(
+            distance_square,
+            view_bindings::clustered_lights.data[light_id].color_inverse_square_range.w,
+        );
+        if range_falloff == 0.0 {
+            continue;
+        }
+}
+
         // If we're lightmapped, disable diffuse contribution from the light if
         // requested, to avoid double-counting light.
         @if(LIGHTMAP)
@@ -519,6 +532,22 @@ fn apply_pbr_lighting(
             i = i + 1u) {
         let light_id = clustering::get_clusterable_object_id(i);
 
+@if(EARLY_LIGHT_CULLING)
+        let light_to_frag =
+            view_bindings::clustered_lights.data[light_id].position_radius.xyz - in.world_position.xyz;
+@if(EARLY_LIGHT_CULLING)
+        let spot_attenuation = lighting::spot_attenuation_factor(light_id, light_to_frag);
+@if(EARLY_LIGHT_CULLING) {
+        let distance_square = dot(light_to_frag, light_to_frag);
+        let range_falloff = lighting::getRangeFalloff(
+            distance_square,
+            view_bindings::clustered_lights.data[light_id].color_inverse_square_range.w,
+        );
+        if range_falloff == 0.0 || spot_attenuation == 0.0 {
+            continue;
+        }
+}
+
         // If we're lightmapped, disable diffuse contribution from the light if
         // requested, to avoid double-counting light.
         @if(LIGHTMAP)
@@ -549,6 +578,14 @@ fn apply_pbr_lighting(
             shadow *= calculate_contact_shadow(in.world_position.xyz, in.frag_coord.xy, L, contact_shadow_steps);
         }
 
+@if(EARLY_LIGHT_CULLING)
+        let light_contrib = lighting::spot_light_with_attenuation(
+            light_id,
+            &lighting_input,
+            enable_diffuse,
+            spot_attenuation,
+        );
+@else
         let light_contrib = lighting::spot_light(light_id, &lighting_input, enable_diffuse);
         direct_light += light_contrib * shadow;
 
@@ -574,6 +611,14 @@ fn apply_pbr_lighting(
             );
         }
 
+@if(EARLY_LIGHT_CULLING)
+        let transmitted_light_contrib = lighting::spot_light_with_attenuation(
+            light_id,
+            &transmissive_lighting_input,
+            enable_diffuse,
+            spot_attenuation,
+        );
+@else
         let transmitted_light_contrib =
             lighting::spot_light(light_id, &transmissive_lighting_input, enable_diffuse);
         transmitted_light += transmitted_light_contrib * transmitted_shadow;

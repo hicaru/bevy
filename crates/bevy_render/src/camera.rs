@@ -477,6 +477,8 @@ pub struct ExtractedCamera {
     /// target. Those exceptions don't apply when the render target is shared by
     /// multiple cameras.
     pub tonemap_in_shader: bool,
+    /// Whether this camera owns its main textures instead of sharing them by target.
+    pub isolated_main_texture: bool,
 }
 
 pub fn extract_cameras(
@@ -504,6 +506,7 @@ pub fn extract_cameras(
                 Option<&Projection>,
                 Has<NoIndirectDrawing>,
                 Has<TonemappingPass>,
+                Has<crate::view::IsolatedMainTexture>,
             ),
         )>,
     >,
@@ -567,6 +570,7 @@ pub fn extract_cameras(
             projection,
             no_indirect_drawing,
             tonemapping_pass,
+            isolated_main_texture,
         ),
     ) in query.iter()
     {
@@ -683,6 +687,7 @@ pub fn extract_cameras(
                         .unwrap_or_else(|| Exposure::default().exposure()),
                     hdr,
                     tonemap_in_shader: in_shader,
+                    isolated_main_texture,
                 },
                 ResolvedCompositingSpace(compositing_space.copied()),
                 ExtractedView {
@@ -1515,6 +1520,7 @@ mod tests {
             exposure: 1.0,
             hdr,
             tonemap_in_shader: false,
+            isolated_main_texture: false,
         }
     }
 

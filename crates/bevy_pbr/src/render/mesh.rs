@@ -27,7 +27,7 @@ use bevy_ecs::{
 };
 use bevy_image::TextureFormatPixelInfo;
 use bevy_light::{
-    EnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
+    EarlyLightCulling, EnvironmentMapLight, IrradianceVolume, NotShadowCaster, NotShadowReceiver,
     ShadowFilteringMethod, TransmittedShadowReceiver,
 };
 use bevy_math::{Affine3, Affine3Ext, Rect, UVec2, Vec3, Vec4};
@@ -387,6 +387,7 @@ pub fn check_views_need_specialization(
             Has<ExtractedAtmosphere>,
             Has<ScreenSpaceReflectionsUniform>,
             Has<ContactShadows>,
+            Has<EarlyLightCulling>,
         ),
     )>,
     mut seen_views: Local<HashSet<RetainedViewEntity>>,
@@ -406,7 +407,7 @@ pub fn check_views_need_specialization(
         projection,
         distance_fog,
         (has_environment_maps, has_irradiance_volumes),
-        (has_oit, has_atmosphere, has_ssr, has_contact_shadows),
+        (has_oit, has_atmosphere, has_ssr, has_contact_shadows, early_light_culling),
     ) in views.iter_mut()
     {
         seen_views.insert(view.retained_view_entity);
@@ -456,6 +457,10 @@ pub fn check_views_need_specialization(
 
         if has_contact_shadows {
             view_key |= MeshPipelineKey::CONTACT_SHADOWS;
+        }
+
+        if early_light_culling {
+            view_key |= MeshPipelineKey::EARLY_LIGHT_CULLING;
         }
 
         if view.invert_culling {
@@ -3127,7 +3132,8 @@ bitflags::bitflags! {
         const INVERT_CULLING                    = 1 << 22;
         const PREPASS_READS_MATERIAL            = 1 << 23;
         const CONTACT_SHADOWS                   = 1 << 24;
-        const LAST_FLAG                         = Self::CONTACT_SHADOWS.bits();
+        const EARLY_LIGHT_CULLING               = 1 << 25;
+        const LAST_FLAG                         = Self::EARLY_LIGHT_CULLING.bits();
 
         const ALL_PREPASS_BITS                  = Self::DEPTH_PREPASS.bits()
                                                 | Self::NORMAL_PREPASS.bits()
@@ -3514,6 +3520,10 @@ impl SpecializedMeshPipeline for MeshPipeline {
 
         if key.contains(MeshPipelineKey::CONTACT_SHADOWS) {
             shader_defs.push("CONTACT_SHADOWS".into());
+        }
+
+        if key.contains(MeshPipelineKey::EARLY_LIGHT_CULLING) {
+            shader_defs.push("EARLY_LIGHT_CULLING".into());
         }
 
         if key.contains(MeshPipelineKey::OIT_ENABLED) {
