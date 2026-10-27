@@ -93,7 +93,7 @@ pub fn resolve_composition_spaces(
         .map(
             |(entity, camera, view, texture_usage, msaa, is_camera_2d, resolved)| {
                 (
-                    main_texture_key(camera, view, texture_usage, *msaa),
+                    main_texture_key(entity, camera, view, texture_usage, *msaa),
                     SpaceInput {
                         entity,
                         sorted_index: camera.sorted_camera_index_for_target,
@@ -352,6 +352,7 @@ mod tests {
                 TextureUsages::RENDER_ATTACHMENT,
                 TextureFormat::Rgba16Float,
                 msaa,
+                None,
             ),
             SpaceInput {
                 entity: entity(raw),
@@ -369,6 +370,18 @@ mod tests {
         raw: u32,
     ) -> Option<CompositingSpace> {
         *output.get(&entity(raw)).expect("view must be resolved")
+    }
+
+    #[test]
+    fn isolated_views_keep_composition_stacks_separate() {
+        let (mut first_key, first) = view(1, 0, 0, SRGB);
+        let (mut second_key, second) = view(2, 0, 1, OKLAB);
+        first_key.4 = Some(entity(1));
+        second_key.4 = Some(entity(2));
+        let (resolved, diagnostics) = resolve_spaces([(first_key, first), (second_key, second)]);
+        assert_eq!(resolved_for(&resolved, 1), SRGB);
+        assert_eq!(resolved_for(&resolved, 2), OKLAB);
+        assert!(diagnostics.is_empty());
     }
 
     fn has_conflict(diagnostics: &[CompositingSpaceResolutionError]) -> bool {
